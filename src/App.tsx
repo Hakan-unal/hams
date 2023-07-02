@@ -1,14 +1,35 @@
-import { useState } from "react";
-import { Row, Col, Select, Form, Button, Card, Space } from 'antd';
+import { useState, useEffect } from "react";
+import { Row, Col, Select, Form, Button, Card, Space, Table } from 'antd';
 import { days, months, horoscope } from "./staticData/data"
 import { showNotification } from "./components/general/notification";
 import Meta from "antd/es/card/Meta";
+import supabase from "../src/supabaseConfig";
+import { Auth } from '@supabase/auth-ui-react'
 
+const columns = [
+  {
+    title: 'Name',
+    dataIndex: 'name',
+    key: 'name',
+  },
+  {
+    title: 'Description',
+    dataIndex: 'description',
+    key: 'description',
+  },
+  {
+    title: 'Image',
+    dataIndex: 'image',
+    key: 'image',
+  },
+];
 
 
 const App = () => {
   const [form] = Form.useForm();
   const [current, setCurrent] = useState<any>(horoscope[6])
+  const [fishes, setFishes] = useState<any>([])
+  const [session, setSession] = useState<any>(null)
 
 
   const onFinish = (values: any) => {
@@ -39,52 +60,40 @@ const App = () => {
   }
 
 
+  // useEffect(() => {
+  //   getCountries();
+  // }, []);
+
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    console.log(session)
+    session && getFishes()
+  }, [session])
+
+  const getFishes = async () => {
+    const { data } = await supabase.from("fish").select("*");
+    setFishes(data);
+  }
+
+
   return (<Row>
     <Col xs={24} sm={{ span: 8, offset: 8 }}>
-      <Space direction="vertical" size={40} >
-        <Card
-          hoverable
-          cover={current?.icon}
-        >
-          <Meta title={current?.title} description={current?.description} />
-        </Card>
-        <Form
-          form={form}
-          name="basic"
-          onFinish={onFinish}
-          onFinishFailed={onFinishFailed}
-          initialValues={{ day: 30, month: 8 }}
-          autoComplete="off"
-        >
-          <Form.Item
-            name="day"
-            rules={[{ required: true, message: 'Please input your day' }]}
-          >
-            <Select
-              placeholder="Please select your birth day"
-              allowClear
-              options={days}
-            />
-          </Form.Item>
-          <Form.Item
-            name="month"
-            rules={[{ required: true, message: 'Please input your month' }]}
-          >
-            <Select
-              placeholder="Please select your birth month"
-              allowClear
-              options={months}
-            />
-          </Form.Item>
+      <Table dataSource={fishes} columns={columns} />;
 
-          <Form.Item >
-            <Button block htmlType="submit">
-              Submit
-            </Button>
-          </Form.Item>
-
-        </Form>
-      </Space>
 
     </Col>
 
